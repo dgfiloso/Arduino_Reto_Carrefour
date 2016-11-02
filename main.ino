@@ -23,6 +23,11 @@
 
 */
 
+/************ VERSION 1.2 ************
+ *  
+ *  Funcionamiento correcto de detección de objetos
+ */
+
 //NOTA ---> EL CODIGO NO ESTA OPTIMIZADO, HAY MUCHAS COSAS QUE SOBRAN JEJEJEJE
 
 #include <Servo.h>
@@ -56,13 +61,13 @@ double bValor;            //almacena el primer radio medido
 
 const double p = 3.1415;          // constante pi
 
-Ultrasonic ultrasonic(3,2);
+// Ultrasonic ultrasonic(3,2);
 
 void setup() {
   mis.attach(0);
   Serial.begin(9600);
-//  pinMode(2, INPUT);
-//  pinMode(3, OUTPUT);
+  pinMode(2, INPUT);
+  pinMode(3, OUTPUT);
 }
 
 void loop() {
@@ -70,14 +75,19 @@ void loop() {
     comand = Serial.read();
     Serial.flush();
     if (comand == 'a') {
+      Serial.println("--------------------- NUEVA MEDIDA ---------------------");
       mis.write(constrain(angRef, 0, 180));         //gira al angulo de referencia antes de empezar el bucle
-      preF =  (ultrasonic.Ranging(CM) < 50);// (ultrasonic() < 50);       //el primer valor de preF es el primero que se encuenta
-      delay(50);
+      delay(25);
+      preF =  (distancia() < 50);// (ultrasonic() < 50);       //el primer valor de preF es el primero que se encuenta
+      delay(25);
       for (int i = angRef+1; i < 180 - angRef; i++) { //Rota el angulo desde (180-i) hasta (i)
         angulo = i;
         angulo = constrain(angulo, 0, 180);
         mis.write(angulo);
-        value = ultrasonic.Ranging(CM);// ultrasonic();
+        delay(25);
+        value =distancia();// ultrasonic();
+        Serial.print("Valor detectado = ");
+        Serial.println(value);
 
         f = (value < 50);     //el valor maximo que da el sensor el 51, si es menos es que hay objeto
 
@@ -85,7 +95,7 @@ void loop() {
           if (preF == 0) {   //si pasa de un hueco a un objeto se finaliza la medida del hueco
             cont = 0;
             angL = angulo;    //angulo en el que se empieza a detectar objeto
-            bValor = ultrasonic.Ranging(CM);// ultrasonic();    //valor del radio donde se empieza a detectar el objeto
+            bValor =distancia();// ultrasonic();    //valor del radio donde se empieza a detectar el objeto
           }
 
           preF = f;
@@ -97,7 +107,7 @@ void loop() {
 
         if (f == 0) {          //calculo el angulo total girado
           if (preF == 1) {      //si pasa de un objeto a un hueco se finaliza la medida del objeto
-            if (cont >= 10) {    //si el angulo barrido en el objeto es menor a 6 no es un objeto (evita falsas medidas)
+            if (cont >= 5) {    //si el angulo barrido en el objeto es menor a 6 no es un objeto (evita falsas medidas)
               lObjeto = sumaOb / cont;
               int tamano = abs(bValor * cos(2 * p * angL / 360)) - abs(lValor * cos((angulo - 1) * 2 * p / 360));
               Serial.print("\n primer angulo "); Serial.print(angL); Serial.print(" segundo "); Serial.print(angulo); Serial.print(" distancia ");  Serial.print(lObjeto);
@@ -110,17 +120,35 @@ void loop() {
           preF = 0;
           cont++;
         }
-        delay(50);
+        delay(25);
 
       }
 
-      mis.write(90);
+      mis.write(angRef);
     }
 
   }
 
 
 
+
+}
+
+double distancia () {
+  double tiempo;
+  double dist;
+  digitalWrite(trigPin,LOW); /* Por cuestión de estabilización del sensor*/
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH); /* envío del pulso ultrasónico*/
+  delayMicroseconds(30);
+  tiempo=pulseIn(echoPin, HIGH, 1500/0.017); /* Función para medir la longitud del pulso entrante. Mide el tiempo que transcurrido entre el envío
+  del pulso ultrasónico y cuando el sensor recibe el rebote, es decir: desde que el pin 12 empieza a recibir el rebote, HIGH, hasta que
+  deja de hacerlo, LOW, la longitud del pulso entrante*/
+  dist = double(0.017*tiempo); /*fórmula para calcular la distancia obteniendo un valor entero*/
+//  if(dist < 2 || dist > 1000){
+//      dist = distancia();
+//    }
+  return dist;
 
 }
 
